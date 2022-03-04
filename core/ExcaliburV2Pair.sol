@@ -83,7 +83,7 @@ contract ExcaliburV2Pair is IExcaliburV2Pair, UniswapV2ERC20 {
   * Can only be called by the factory's owner
   */
   function setFeeAmount(uint newFeeAmount) external {
-    require(msg.sender == IExcaliburV2Factory(factory).owner(), "ExcaliburV2Pair: only factory's owner");
+    require(msg.sender == IExcaliburV2Factory(factory).feeAmountOwner(), "ExcaliburV2Pair: only factory's feeAmountOwner");
     require(newFeeAmount <= MAX_FEE_AMOUNT, "ExcaliburV2Pair: feeAmount mustn't exceed the maximum");
     require(newFeeAmount >= MIN_FEE_AMOUNT, "ExcaliburV2Pair: feeAmount mustn't exceed the minimum");
     uint prevFeeAmount = feeAmount;

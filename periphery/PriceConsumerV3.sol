@@ -21,6 +21,9 @@ contract PriceConsumerV3 is IPriceConsumer {
   uint public immutable USD_DECIMALS;
   uint internal _lastEXCPrice;
 
+  // token => quote address to use
+  mapping(address => address) public tokensQuote;
+
   // [tokenAddress][quoteAddress] = priceFeederAddress => quoteAddress (WETH,USD)
   mapping(address => mapping(address => address)) public tokenPriceFeeder;
 
@@ -28,6 +31,7 @@ contract PriceConsumerV3 is IPriceConsumer {
   event SetWhitelistToken(address token, bool isWhitelisted);
   event SetOwner(address prevOwner, address newOwner);
   event SetTokenPriceFeeder(address token, address quote, address priceFeeder);
+  event SetTokenQuote(address token, address quote);
 
   constructor(address _factory, address _WETH, address _USD, address _EXC, uint usdDecimals) public {
     owner = msg.sender;
@@ -82,8 +86,14 @@ contract PriceConsumerV3 is IPriceConsumer {
     return _valueOfTokenUSD(token);
   }
 
+  function setTokenQuote(address token, address quote) external onlyOwner {
+    require((quote == USD || quote == WETH) && token != quote, "PriceConsumerV3: invalid quote");
+    tokensQuote[token] = quote;
+    emit SetTokenQuote(token, quote);
+  }
+
   function setTokenPriceFeeder(address token, address quote, address priceFeeder) external onlyOwner {
-    require(quote == USD || quote == WETH && token != quote, "PriceConsumerV3: invalid quote");
+    require((quote == USD || quote == WETH) && token != quote, "PriceConsumerV3: invalid quote");
     tokenPriceFeeder[token][quote] = priceFeeder;
     emit SetTokenPriceFeeder(token, quote, priceFeeder);
   }
@@ -121,8 +131,8 @@ contract PriceConsumerV3 is IPriceConsumer {
     if (priceFeeder == address(0)) return 0;
 
     uint priceDecimals = uint(AggregatorV3Interface(priceFeeder).decimals());
-    (,int price,,uint updatedAt,) = AggregatorV3Interface(priceFeeder).latestRoundData();
-    if (price <= 0 || updatedAt.add(1 days + 1 hours) < block.timestamp) return 0;
+    (uint80 roundId,int price,,,uint80 answeredInRound) = AggregatorV3Interface(priceFeeder).latestRoundData();
+    if (price <= 0 || answeredInRound < roundId) return 0;
 
     if (quote == WETH) {
       return uint(price).mul(_getWETHFairPriceUSD()) / 10 ** priceDecimals;
@@ -147,8 +157,8 @@ contract PriceConsumerV3 is IPriceConsumer {
     if (priceFeeder == address(0)) return 0;
 
     uint priceDecimals = uint(AggregatorV3Interface(priceFeeder).decimals());
-    (,int price,,uint updatedAt,) = AggregatorV3Interface(priceFeeder).latestRoundData();
-    if (price <= 0 || updatedAt.add(1 days + 1 hours) < block.timestamp) return 0;
+    (uint80 roundId,int price,,,uint80 answeredInRound) = AggregatorV3Interface(priceFeeder).latestRoundData();
+    if (price <= 0 || answeredInRound < roundId) return 0;
 
     uint _usdDecimals = USD_DECIMALS;
     if (priceDecimals < _usdDecimals) {
@@ -166,15 +176,10 @@ contract PriceConsumerV3 is IPriceConsumer {
    * Called if no priceFeeder is available for this token
    */
   function _getTokenPriceUSDUsingPair(address token) internal view returns (uint){
-    address quote = USD;
+    address quote = tokensQuote[token];
+    if (quote == address(0)) return 0;
     address _pair = IExcaliburV2Factory(factory).getPair(token, quote);
-    if (_pair == address(0)) {
-      if (token == WETH) return 0;
-
-      quote = WETH;
-      _pair = IExcaliburV2Factory(factory).getPair(token, quote);
-      if (_pair == address(0)) return 0;
-    }
+    if (_pair == address(0)) return 0;
     IExcaliburV2Pair pair = IExcaliburV2Pair(_pair);
 
     (uint reserve0, uint reserve1,) = pair.getReserves();

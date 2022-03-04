@@ -57,7 +57,7 @@ contract Dividends is Ownable, ReentrancyGuard, IDividends {
 
   IERC20 public immutable grailToken;
 
-  uint256 public constant MIN_CYCLE_DIVIDENDS_PERCENT = 5;
+  uint256 public constant MIN_CYCLE_DIVIDENDS_PERCENT = 1;
   uint256 public constant MAX_CYCLE_DIVIDENDS_PERCENT = 100;
   // dividends will be added to the currentDistributionAmount on each new cycle
   uint256 public cycleDurationSeconds = 1 days;

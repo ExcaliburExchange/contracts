@@ -7,6 +7,7 @@ contract ExcaliburV2Factory is IExcaliburV2Factory {
     bytes32 public constant INIT_CODE_PAIR_HASH = keccak256(abi.encodePacked(type(ExcaliburV2Pair).creationCode));
 
     address public owner;
+    address public feeAmountOwner;
     address public feeTo;
 
     //uint public constant FEE_DENOMINATOR = 100000;
@@ -23,10 +24,12 @@ contract ExcaliburV2Factory is IExcaliburV2Factory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
     event OwnerFeeShareUpdated(uint prevOwnerFeeShare, uint ownerFeeShare);
     event OwnershipTransferred(address indexed prevOwner, address indexed newOwner);
+    event FeeAmountOwnershipTransferred(address indexed prevOwner, address indexed newOwner);
     event ReferrerFeeShareUpdated(address referrer, uint prevReferrerFeeShare, uint referrerFeeShare);
 
     constructor(address feeTo_) public {
         owner = msg.sender;
+        feeAmountOwner = msg.sender;
         feeTo = feeTo_;
     }
 
@@ -63,6 +66,12 @@ contract ExcaliburV2Factory is IExcaliburV2Factory {
         require(_owner != address(0), "ExcaliburV2Factory: zero address");
         emit OwnershipTransferred(owner, _owner);
         owner = _owner;
+    }
+
+    function setFeeAmountOwner(address _feeAmountOwner) external onlyOwner {
+        require(_feeAmountOwner != address(0), "ExcaliburV2Factory: zero address");
+        emit FeeAmountOwnershipTransferred(feeAmountOwner, _feeAmountOwner);
+        feeAmountOwner = _feeAmountOwner;
     }
 
     function setFeeTo(address _feeTo) external onlyOwner {
